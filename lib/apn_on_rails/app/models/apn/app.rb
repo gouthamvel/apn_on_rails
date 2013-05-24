@@ -48,9 +48,18 @@ class APN::App < APN::Base
         APN::Connection.open_for_delivery({:cert => the_cert}) do |conn, sock|
           notifications = APN::Notification.find(:all, :select => "apn_notifications.*", :conditions => conditions, :joins => " INNER JOIN apn_devices ON apn_devices.id = apn_notifications.device_id")
           notifications.each do |noty|
-            conn.write(noty.message_for_sending)
-            noty.sent_at = Time.now
-            noty.save
+              begin
+                result = conn.write(noty.message_for_sending)
+                unless result.nil?
+                  noty.sent_at = Time.now
+                  noty.save
+                else
+                  Rails.logger.error "Connection error for notification #{noty.id}"
+                  raise Error, "Connection error for notification #{noty.id}"
+                end
+                result = nil
+              rescue
+              end
           end
         end
       rescue Exception => e
