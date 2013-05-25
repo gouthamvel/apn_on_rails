@@ -35,7 +35,7 @@ describe APN::Notification do
     
     it 'should return the necessary JSON for Apple' do
       noty = APN::Notification.first
-      noty.to_apple_json.should == %{{"typ":"1","aps":{"badge":5,"sound":"my_sound.aiff","alert":"Hello!"}}}
+      noty.to_apple_json.should == %{{"aps":{"alert":"Hello!","badge":5,"sound":"my_sound.aiff"},"typ":"1"}}
     end
     
   end
@@ -46,11 +46,13 @@ describe APN::Notification do
       noty = APN::Notification.first
       noty.custom_properties = nil
       noty.device = DeviceFactory.new(:token => '5gxadhy6 6zmtxfl6 5zpbcxmw ez3w7ksf qscpr55t trknkzap 7yyt45sc g6jrw7qz')
-      noty.message_for_sending.should == fixture_value('message_for_sending.bin')
+      Digest::MD5.hexdigest(noty.message_for_sending).should == "cd334410090bc373e9302887cb015bea"
     end
     
     it 'should raise an APN::Errors::ExceededMessageSizeError if the message is too big' do
-      noty = NotificationFactory.new(:device_id => DeviceFactory.create, :sound => true, :badge => nil)
+      noty = APN::Notification.first
+      noty.custom_properties = nil
+      noty.device = DeviceFactory.new(:token => '5gxadhy6 6zmtxfl6 5zpbcxmw ez3w7ksf qscpr55t trknkzap 7yyt45sc g6jrw7qz')
       noty.send(:write_attribute, 'alert', 'a' * 183)
       lambda {
         noty.message_for_sending
@@ -58,7 +60,29 @@ describe APN::Notification do
     end
     
   end
-  
+
+  describe 'enhanced_message_for_sending' do
+
+    it 'should create an enhanced binary message to be sent to Apple' do
+      noty = APN::Notification.first
+      noty.custom_properties = nil
+      noty.device = DeviceFactory.new(:token => '5gxadhy6 6zmtxfl6 5zpbcxmw ez3w7ksf qscpr55t trknkzap 7yyt45sc g6jrw7qz')
+      noty.stub(:encoded_expiry_time).and_return([1337262176].pack('N'))
+      Digest::MD5.hexdigest(noty.enhanced_message_for_sending).should == "7cbffe207d368a6e513bf6a16a095ec3"
+    end
+
+    it 'should raise an APN::Errors::ExceededMessageSizeError if the message is too big' do
+      noty = APN::Notification.first
+      noty.custom_properties = nil
+      noty.device = DeviceFactory.new(:token => '5gxadhy6 6zmtxfl6 5zpbcxmw ez3w7ksf qscpr55t trknkzap 7yyt45sc g6jrw7qz')
+      noty.send(:write_attribute, 'alert', 'a' * 183)
+      lambda {
+        noty.enhanced_message_for_sending
+      }.should raise_error(APN::Errors::ExceededMessageSizeError)
+    end
+
+  end
+
   describe 'send_notifications' do 
     
     it 'should warn the user the method is deprecated and call the corresponding method on APN::App' do
