@@ -1,19 +1,19 @@
 require File.join(File.dirname(__FILE__), '..', '..', '..', '..', 'spec_helper.rb')
 
 describe APN::Notification do
-  
+
   describe 'alert' do
-    
+
     it 'should trim the message to 150 characters' do
       noty = APN::Notification.new
       noty.alert = 'a' * 200
       noty.alert.should == ('a' * 147) + '...'
     end
-    
+
   end
-  
+
   describe 'apple_hash' do
-    
+
     it 'should return a hash of the appropriate params for Apple' do
       noty = APN::Notification.first
       noty.apple_hash.should == {"aps" => {"badge" => 5, "sound" => "my_sound.aiff", "alert" => "Hello!"},"typ" => "1"}
@@ -28,27 +28,27 @@ describe APN::Notification do
       noty.sound = true
       noty.apple_hash.should == {"aps" => {"sound" => "1.aiff"}}
     end
-    
+
   end
-  
+
   describe 'to_apple_json' do
-    
+
     it 'should return the necessary JSON for Apple' do
       noty = APN::Notification.first
       noty.to_apple_json.should == %{{"aps":{"alert":"Hello!","badge":5,"sound":"my_sound.aiff"},"typ":"1"}}
     end
-    
+
   end
-  
+
   describe 'message_for_sending' do
-    
+
     it 'should create a binary message to be sent to Apple' do
       noty = APN::Notification.first
       noty.custom_properties = nil
       noty.device = DeviceFactory.new(:token => '5gxadhy6 6zmtxfl6 5zpbcxmw ez3w7ksf qscpr55t trknkzap 7yyt45sc g6jrw7qz')
       Digest::MD5.hexdigest(noty.message_for_sending).should == "cd334410090bc373e9302887cb015bea"
     end
-    
+
     it 'should raise an APN::Errors::ExceededMessageSizeError if the message is too big' do
       noty = APN::Notification.first
       noty.custom_properties = nil
@@ -58,7 +58,7 @@ describe APN::Notification do
         noty.message_for_sending
       }.should raise_error(APN::Errors::ExceededMessageSizeError)
     end
-    
+
   end
 
   describe 'enhanced_message_for_sending' do
@@ -68,6 +68,7 @@ describe APN::Notification do
       noty.custom_properties = nil
       noty.device = DeviceFactory.new(:token => '5gxadhy6 6zmtxfl6 5zpbcxmw ez3w7ksf qscpr55t trknkzap 7yyt45sc g6jrw7qz')
       noty.stub(:encoded_expiry_time).and_return([1337262176].pack('N'))
+      noty.stub(:expiry_time).and_return(1337262176)
       Digest::MD5.hexdigest(noty.enhanced_message_for_sending).should == "7cbffe207d368a6e513bf6a16a095ec3"
     end
 
@@ -75,7 +76,7 @@ describe APN::Notification do
       noty = APN::Notification.first
       noty.custom_properties = nil
       noty.device = DeviceFactory.new(:token => '5gxadhy6 6zmtxfl6 5zpbcxmw ez3w7ksf qscpr55t trknkzap 7yyt45sc g6jrw7qz')
-      noty.send(:write_attribute, 'alert', 'a' * 183)
+      noty.send(:write_attribute, 'alert', 'a' * 205)
       lambda {
         noty.enhanced_message_for_sending
       }.should raise_error(APN::Errors::ExceededMessageSizeError)
@@ -83,13 +84,13 @@ describe APN::Notification do
 
   end
 
-  describe 'send_notifications' do 
-    
+  describe 'send_notifications' do
+
     it 'should warn the user the method is deprecated and call the corresponding method on APN::App' do
       ActiveSupport::Deprecation.should_receive(:warn)
       APN::App.should_receive(:send_notifications)
       APN::Notification.send_notifications
     end
   end
-  
+
 end
