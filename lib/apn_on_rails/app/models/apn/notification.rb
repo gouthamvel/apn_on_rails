@@ -85,10 +85,6 @@ class APN::Notification < APN::Base
     message
   end
 
-  def encoded_expiry_time(seconds_to_expire)
-    [Time.now.to_i + seconds_to_expire].pack('N')
-  end
-
   def expiry_time(seconds_to_expire)
     Time.now.to_i + seconds_to_expire
   end
@@ -101,7 +97,6 @@ class APN::Notification < APN::Base
     json = to_apple_json
     raise APN::Errors::ExceededMessageSizeError.new("json: #{json}") if json.bytes.count > 256
     device_token = self.device.token.delete(' ')
-    encoded_time = self.encoded_expiry_time seconds_to_expire
     qualified_expire_time = self.expiry_time seconds_to_expire
     message = [1, self.id, qualified_expire_time, [device_token].pack('H*').length, device_token, json.bytes.count, json].pack('cNNnH*na*')
     message
