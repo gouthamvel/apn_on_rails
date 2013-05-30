@@ -64,6 +64,7 @@ class APN::App < APN::Base
               noty.sent_at = Time.now
               noty.save
             rescue Exception => e
+              STDERR.puts e.message
               if e.message == "Broken pipe"
                 #Write failed (disconnected). Read response.
                 error_code, notif_id = response_from_apns(conn)
